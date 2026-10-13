@@ -1,0 +1,6 @@
+class FatigueManager{
+ constructor({clock=Date.now,longMs=600000,windowMs=900000,requestLimit=5,restMs=180000}={}){Object.assign(this,{clock,longMs,windowMs,requestLimit,restMs});this.reset();}
+ reset(){this.active=new Map();this.requests=[];this.tired=false;this.restStarted=null;}
+ observe(event,session){const now=this.clock();if(event==='prompt'){this.requests.push(now);if(!this.active.has(session))this.active.set(session,now);this.restStarted=null;}else if(['done','failed','session_end'].includes(event)){this.active.delete(session);if(!this.active.size&&this.restStarted===null)this.restStarted=now;}return this.status();}
+ status(){const now=this.clock();this.requests=this.requests.filter(t=>now-t<this.windowMs);if(this.active.size&&(this.requests.length>=this.requestLimit||[...this.active.values()].some(t=>now-t>=this.longMs)))this.tired=true;if(this.tired&&!this.active.size&&this.restStarted!==null&&now-this.restStarted>=this.restMs){this.reset();}return{tired:this.tired,activeTasks:this.active.size,recentRequests:this.requests.length,recoverInMs:this.tired&&!this.active.size&&this.restStarted!==null?Math.max(0,this.restMs-(now-this.restStarted)):null};}
+}module.exports={FatigueManager};

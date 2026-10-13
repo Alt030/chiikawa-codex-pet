@@ -1,0 +1,40 @@
+:root {
+  --bubble-scale: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.bubble {
+  display: inline-block;
+  max-width: calc(300px * var(--bubble-scale));
+  min-width: calc(120px * var(--bubble-scale));
+  min-height: calc(36px * var(--bubble-scale));
+  padding: calc(8px * var(--bubble-scale)) calc(11px * var(--bubble-scale));
+  border: 1px solid rgba(24, 34, 47, 0.13);
+  border-radius: calc(9px * var(--bubble-scale));
+  background: rgba(255, 255, 255, 0.94);
+  color: #18222f;
+  font-size: calc(13px * var(--bubble-scale));
+  line-height: 1.28;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
+  overflow-wrap: anywhere;
+}
+
+.bubble{font-family:"Malgun Gothic","Segoe UI",sans-serif;max-width:340px;padding:14px;line-height:1.5;background:rgba(255,250,240,.97)}
+.reaction-image{width:96px;height:104px;background-size:768px 936px;margin:4px auto 8px;background-repeat:no-repeat}
+.detail{margin-top:8px;font-size:12px;color:#555;white-space:pre-wrap;max-height:120px;overflow:hidden}
+
+.reaction-card{display:block;width:240px;max-width:100%;height:auto;border-radius:12px;margin:0 auto 12px;object-fit:contain}

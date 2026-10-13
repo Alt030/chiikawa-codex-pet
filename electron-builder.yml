@@ -1,0 +1,33 @@
+appId: io.github.alt030.chiikawa-codex-pet
+productName: Chiikawa Codex Pet
+icon: src/assets/logo.png
+directories:
+  output: dist
+files:
+  - src/**
+  - package.json
+  - LICENSE
+  - AGENTPAW-LICENSE.txt
+  - THIRD-PARTY-NOTICES.md
+  - README.md
+asar: true
+win:
+  executableName: Chiikawa Codex Pet
+  target:
+    - target: nsis
+      arch: [x64]
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Chiikawa Codex Pet
+  artifactName: Chiikawa-Codex-Pet-Setup-${version}-x64.${ext}
+npmRebuild: false
+publish:
+  provider: github
+  owner: Alt030
+  repo: chiikawa-codex-pet
