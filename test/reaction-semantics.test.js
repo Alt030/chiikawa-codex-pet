@@ -11,7 +11,7 @@ test('completion needs final answer evidence and no pending tool calls',()=>{
  assert.equal(mapRecord(complete,t).event,'done');
 });
 test('permission checks differ from real user input requests',()=>{
- const d=buildDecision({source:'codex',hook_event_name:'PermissionRequest',session_id:'a'});assert.equal(d.event,'tool_start');assert.equal(d.persistentState,'running');assert.equal(d.message,'권한 확인 중');
+ const d=buildDecision({source:'codex',hook_event_name:'PermissionRequest',session_id:'a'});assert.equal(d,null);
  assert.equal(mapRecord({type:'event_msg',payload:{type:'request_user_input'}},{id:'a',active:true}).event,'waiting');
  assert.equal(phraseState('click','jumping'),'idle');assert.equal(phraseState('done','jumping'),'jumping');
 });

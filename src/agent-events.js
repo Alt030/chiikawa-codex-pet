@@ -141,7 +141,7 @@ function buildDecision(payload) {
   const sessionId = pickSessionId(payload, source);
   // Tool permission checks may resolve automatically without asking the user.
   if(source==='codex' && String(payload.hook_event_name||'').toLowerCase()==='permissionrequest') {
-    return {source,event:'tool_start',sessionId,persistentState:'running',message:'권한 확인 중',approvalCheck:true};
+    return null;
   }
 
   if (payload.reaction && REACTION_TO_STATE[payload.reaction]) {
