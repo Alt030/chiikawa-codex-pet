@@ -1,6 +1,15 @@
 * {
   box-sizing: border-box;
 }
+.working-artwork {
+  position:absolute;
+  left:var(--sprite-left);
+  bottom:0;
+  object-fit:contain;
+  pointer-events:none;
+}
+.working-artwork[hidden]{display:none;}
+.pet[data-working-artwork="true"][data-state="running"]{animation:none;}
 
 :root {
   --zoom: 1;
@@ -130,7 +139,7 @@ body {
   height: 164px;
   opacity: 0;
   transform-origin: 50% 92%;
-  animation: fallback-idle 2.2s ease-in-out infinite;
+  animation: none;
 }
 
 .fallback.show {
@@ -190,55 +199,6 @@ body {
   background: linear-gradient(145deg, #eef5fb 0%, #b9cad8 100%);
 }
 
-.pet[data-state="idle"] {
-  animation: idle-bob 2.4s ease-in-out infinite;
-}
+.pet { animation: none; transform: none; }
 
-.pet[data-state="waving"],
-.pet[data-state="jumping"] {
-  animation: hop 900ms ease-in-out infinite;
-}
 
-.pet[data-state="running"],
-.pet[data-state="review"] {
-  animation: work-bob 640ms ease-in-out infinite;
-}
-
-.pet[data-state="waiting"] {
-  animation: waiting-tilt 1.2s ease-in-out infinite;
-}
-
-.pet[data-state="failed"] {
-  animation: failed-shake 420ms ease-in-out infinite;
-}
-
-@keyframes idle-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes hop {
-  0%, 100% { transform: translateY(0); }
-  35% { transform: translateY(-14px); }
-}
-
-@keyframes work-bob {
-  0%, 100% { transform: translateX(-2px) rotate(-1.5deg); }
-  50% { transform: translateX(2px) rotate(1.5deg); }
-}
-
-@keyframes waiting-tilt {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(4deg); }
-}
-
-@keyframes failed-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-}
-
-@keyframes fallback-idle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}

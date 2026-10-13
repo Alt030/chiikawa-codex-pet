@@ -1,6 +1,8 @@
 const pet = document.getElementById("pet");
 const stage = document.querySelector(".stage");
 const sprite = document.getElementById("sprite");
+const workingArtwork=document.getElementById('workingArtwork');
+function updateWorkingArtwork(){const show=currentPet?.id==='shisa'&&currentState==='running';workingArtwork.hidden=!show;pet.dataset.workingArtwork=String(show);sprite.style.visibility=show?'hidden':'';}
 const fallback = document.getElementById("fallback");
 const resizeHandle = document.getElementById("resizeHandle");
 
@@ -86,6 +88,8 @@ function updateSpriteMetrics() {
   sprite.style.width = `${CELL_WIDTH * atlasScale}px`;
   sprite.style.height = `${CELL_HEIGHT * atlasScale}px`;
   sprite.style.backgroundSize = `${CELL_WIDTH * 8 * atlasScale}px ${CELL_HEIGHT * 9 * atlasScale}px`;
+  workingArtwork.style.width=`${CELL_WIDTH * atlasScale}px`;
+  workingArtwork.style.height=`${CELL_HEIGHT * atlasScale}px`;
 }
 
 function drawFrame() {
@@ -115,6 +119,7 @@ function setAnimationState(state) {
   currentState = ROWS[normalized] ? normalized : "idle";
   frameIndex = 0;
   pet.dataset.state = currentState;
+  updateWorkingArtwork();
   if (currentState !== "idle" && !resizeStart) {
     stage.classList.remove("show-resize");
   }
@@ -124,6 +129,7 @@ function setAnimationState(state) {
 
 function setPet(petPayload) {
   currentPet = petPayload || null;
+  updateWorkingArtwork();
   tintedAtlas=null;
   const selected=currentPet;
   if(selected?.id==="kurimanju"){const image=new Image();image.onload=()=>{if(currentPet!==selected)return;const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext("2d");ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height);PetFaceTint.tintAtlas(pixels.data,image.width,image.height);ctx.putImageData(pixels,0,0);tintedAtlas=canvas.toDataURL("image/png");applyFatigue();};image.src=selected.spritesheetUrl;}
