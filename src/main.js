@@ -8,6 +8,18 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
+const {constrainBounds}=require('./screen-bounds');
+let constrainingWindow=false;
+function keepPetOnScreen(persist=false){
+ if(!win||win.isDestroyed()||constrainingWindow)return;
+ const bounds=win.getBounds();const area=screen.getDisplayMatching(bounds).workArea;
+ const safe=constrainBounds(bounds,area);
+ if(Object.keys(safe).some(key=>safe[key]!==bounds[key])){
+  constrainingWindow=true;try{win.setBounds(safe);}finally{constrainingWindow=false;}
+ }
+ if(persist){settings.windowBounds=win.getBounds();saveSettings();}
+ positionBubble();
+}
 const { FatigueManager } = require("./fatigue-manager");
 const fatigue = new FatigueManager();
 const { IdleCompanion } = require('./idle-companion');
@@ -226,7 +238,9 @@ function getPetStorageInfo() {
 
 function createWindow() {
   const savedBounds = settings.windowBounds || {};
-  const zoom = clampZoom(settings.zoom || 1);
+  const area=screen.getDisplayNearestPoint({x:Number.isFinite(savedBounds.x)?savedBounds.x:40,y:Number.isFinite(savedBounds.y)?savedBounds.y:220}).workArea;
+  const zoom = Math.min(clampZoom(settings.zoom || 1),area.width/BASE_WINDOW_WIDTH,area.height/BASE_WINDOW_HEIGHT);
+  settings.zoom=zoom;
   win = new BrowserWindow({
     width: Math.round(BASE_WINDOW_WIDTH * zoom),
     height: Math.round(BASE_WINDOW_HEIGHT * zoom),
@@ -250,7 +264,9 @@ function createWindow() {
 
   win.setAlwaysOnTop(true, "floating");
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
-  win.once("ready-to-show", () => win.show());
+  keepPetOnScreen();
+  win.on('move',()=>keepPetOnScreen());
+  win.once("ready-to-show", () => {keepPetOnScreen(true);win.show();});
   win.on("closed", () => {
     win = null;
   });
@@ -901,11 +917,13 @@ function installHookAgent(agentId) {
 
 function resizePetWindow(zoomInput) {
   if (!win || win.isDestroyed()) return { ok: false };
-  const zoom = clampZoom(zoomInput);
   const bounds = win.getBounds();
+  const area=screen.getDisplayMatching(bounds).workArea;
+  const zoom = Math.min(clampZoom(zoomInput),area.width/BASE_WINDOW_WIDTH,area.height/BASE_WINDOW_HEIGHT);
   const width = Math.round(BASE_WINDOW_WIDTH * zoom);
   const height = Math.round(BASE_WINDOW_HEIGHT * zoom);
   win.setBounds({ x: bounds.x, y: bounds.y, width, height });
+  keepPetOnScreen();
   settings.zoom = zoom;
   settings.windowBounds = win.getBounds();
   saveSettings();
@@ -1368,6 +1386,7 @@ app.whenReady().then(() => {
   createBubbleWindow();
   createTray();
   createApiServer();
+  for(const event of ['display-added','display-removed','display-metrics-changed'])screen.on(event,()=>{resizePetWindow(settings.zoom||1);keepPetOnScreen(true);});
   codexObserver.start();
   quota.refresh();
   idleCompanionTimer=setInterval(()=>{
@@ -1499,7 +1518,9 @@ app.whenReady().then(() => {
     const x = Math.round(Number(point.x));
     const y = Math.round(Number(point.y));
     if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-    win.setPosition(x, y);
+    const proposed={...win.getBounds(),x,y};
+    const safe=constrainBounds(proposed,screen.getDisplayMatching(proposed).workArea);
+    win.setPosition(safe.x, safe.y);
     positionBubble();
     return true;
   });
@@ -1517,6 +1538,7 @@ app.whenReady().then(() => {
     return true;
   });
   ipcMain.handle("pet:finish-drag", () => {
+    keepPetOnScreen();
     if (win && !win.isDestroyed()) {
       settings.windowBounds = win.getBounds();
       saveSettings();
