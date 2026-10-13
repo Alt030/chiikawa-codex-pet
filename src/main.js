@@ -41,7 +41,21 @@ const toolDisplayGate = new ToolDisplayGate(body => {
   applyAgentDecision(decision);
   if(decision.event==='done') quota.refresh();
 });
-const codexObserver = new CodexObserver(path.join(CODEX_HOME,'sessions'), body => toolDisplayGate.push(body), limits=>quota.update(limits));
+function resumeCodexTool(body, ended=false) {
+  const id='codex:'+body.session_id;
+  // Short-tool filtering must not retain a completed turn or an approval wait.
+  if((!ended&&currentState.agentEvent==='done') ||
+    (['waiting','notification'].includes(currentState.agentEvent)&&currentState.sessionId===id)) {
+    const decision=buildDecision({source:'codex',event:ended?'tool_end':'tool_start',session_id:body.session_id,message:ended?'다음 단계 진행 중':'도구 사용 중'});
+    decision.persistentState='running';
+    applyAgentDecision(decision);
+  }
+}
+const codexObserver = new CodexObserver(path.join(CODEX_HOME,'sessions'), body => {
+  if(body.event==='tool_start')resumeCodexTool(body);
+  if(body.event==='tool_end')resumeCodexTool(body,true);
+  toolDisplayGate.push(body);
+}, limits=>quota.update(limits));
 const LOGO_PATH = path.join(__dirname, "assets", "logo.png");
 const BUNDLED_PETS_ROOT = path.join(__dirname, "assets", "pets");
 const RELEASES_URL = "https://github.com/Alt030/chiikawa-codex-pet/releases";
@@ -619,7 +633,8 @@ function broadcastAgentAggregate() {
     message: aggregate.message,
     source: aggregate.source,
     sessionId: aggregate.sessionId,
-    agentEvent: "aggregate",
+    agentEvent: aggregate.event || "aggregate",
+    editingFiles: aggregate.editingFiles || [],
     sessions: agentSessions.list()
   });
 }
@@ -673,7 +688,7 @@ function commitAgentDecision(decision) {
     source: result.display.source,
     sessionId: result.display.sessionId,
     agentEvent: result.display.agentEvent,
-    editingFiles: decision.editingFiles || [],
+    editingFiles: result.display.editingFiles || [],
     sessions: result.sessions
   });
 
@@ -1151,6 +1166,8 @@ async function handleApiRequest(req, res) {
       }
 
       recordHookEvent(decision);
+      if(decision.source==='codex'&&decision.event==='tool_start')resumeCodexTool({session_id:decision.sessionId.slice('codex:'.length)});
+      if(decision.source==='codex'&&decision.event==='tool_end')resumeCodexTool({session_id:decision.sessionId.slice('codex:'.length)},true);
       // Rollout is authoritative for Codex lifecycle. Hooks retain permissions
       // and transient failures without duplicate start/completion notifications.
       if(decision.source==='codex' && ['prompt','tool_start','tool_end','done','session_start'].includes(decision.event)) {

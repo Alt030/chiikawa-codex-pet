@@ -200,7 +200,7 @@ function buildDecision(payload) {
       event,
       sessionId,
       persistentState: "waiting",
-      message: pickMessage(payload, `${label} 等待确认`)
+      message: pickMessage(payload, '확인 필요')
     };
   }
 

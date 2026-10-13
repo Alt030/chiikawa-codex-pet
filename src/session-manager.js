@@ -1,7 +1,7 @@
 const STATE_PRIORITY = {
-  failed: 50,
+  failed: 35,
   waiting: 40,
-  running: 30,
+  running: 50,
   review: 20,
   waving: 10,
   jumping: 10,
@@ -52,6 +52,7 @@ class SessionManager {
         state: decision.persistentState,
         message: decision.message || "",
         event: decision.event,
+        editingFiles: decision.editingFiles || [],
         updatedAt,
         updatedAtMs: atMs,
         recentEvents: pushRecentEvent(existing, decision, updatedAt)
@@ -71,13 +72,15 @@ class SessionManager {
     }
 
     const aggregate = this.getAggregate();
+    const showDecision = aggregate.state === 'idle' || aggregate.sessionId === sessionId;
     const display = {
-      state: decision.visualState || aggregate.state,
-      message: decision.message || aggregate.message || "",
-      source: decision.source,
-      sessionId,
-      agentEvent: decision.event,
-      durationMs: Math.max(0, Math.min(Number(decision.durationMs) || 0, 60_000)),
+      state: showDecision ? decision.visualState || aggregate.state : aggregate.state,
+      message: showDecision ? decision.message || aggregate.message || '' : aggregate.message,
+      source: showDecision ? decision.source : aggregate.source,
+      sessionId: showDecision ? sessionId : aggregate.sessionId,
+      agentEvent: showDecision ? decision.event : aggregate.event,
+      editingFiles: showDecision ? decision.editingFiles || [] : aggregate.editingFiles || [],
+      durationMs: showDecision ? Math.max(0, Math.min(Number(decision.durationMs) || 0, 60_000)) : 0,
       returnState: aggregate
     };
 
@@ -98,6 +101,8 @@ class SessionManager {
       message: top.message || "",
       sessionId: top.sessionId,
       source: top.source,
+      event: top.event,
+      editingFiles: top.editingFiles || [],
       updatedAt: top.updatedAt
     };
   }
@@ -111,6 +116,7 @@ class SessionManager {
         state: session.state,
         message: session.message,
         event: session.event,
+        editingFiles: session.editingFiles || [],
         updatedAt: session.updatedAt,
         recentEvents: session.recentEvents
       }));

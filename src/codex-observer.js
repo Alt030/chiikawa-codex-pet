@@ -45,6 +45,8 @@ class CodexObserver{
  tail(file){try{
   const stat=fs.statSync(file);let t=this.files.get(file);
   if(!t){t={id:path.basename(file).match(/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}/i)?.[0]||file,offset:stat.size,pending:'',active:false,work:false};this.files.set(file,t);
+   // Metadata is at the beginning, outside the tail of a long session.
+   const metaFd=fs.openSync(file,'r');try{const header=Buffer.alloc(Math.min(stat.size,65536));fs.readSync(metaFd,header,0,header.length,0);const line=header.toString('utf8').split('\n')[0];try{const row=JSON.parse(line);if(row.type==='session_meta')mapRecord(row,t);}catch{}}finally{fs.closeSync(metaFd);}
    // Bootstrap metadata/quota only; never replay old notifications.
    this.read(file,t,Math.max(0,stat.size-262144),stat.size,true);return;}
   if(stat.size<t.offset){t.offset=0;t.pending='';t.active=false;t.work=false;}
