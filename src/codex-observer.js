@@ -43,14 +43,22 @@ function mapRecord(row,t){
  if(p.type==='message'&&p.phase==='final_answer'){t.finalSeen=true;return event('review','답변 작성 중');}
 }
 class CodexObserver{
- constructor(root,onEvent,onLimits){this.root=root;this.onEvent=onEvent;this.onLimits=onLimits;this.files=new Map();}
- start(){this.scan();this.timer=setInterval(()=>this.scan(),1000);this.timer.unref?.();}
+ constructor(root,onEvent,onLimits){this.root=root;this.onEvent=onEvent;this.onLimits=onLimits;this.files=new Map();this.watchStartedAt=Date.now();this.initialScanComplete=false;}
+ start(){this.scan();this.initialScanComplete=true;this.timer=setInterval(()=>this.scan(),1000);this.timer.unref?.();}
  stop(){clearInterval(this.timer);}
  scan(){
-  const visit=(dir,depth=0)=>{if(depth>4)return;let entries;try{entries=fs.readdirSync(dir,{withFileTypes:true});}catch{return;}
-   for(const e of entries){const file=path.join(dir,e.name);if(e.isDirectory())visit(file,depth+1);else if(e.name.endsWith('.jsonl'))this.tail(file);}};
-  // Discover only today/yesterday, including files created while running.
+  const visited=new Set();
+  const tail=file=>{if(!visited.has(file)){visited.add(file);this.tail(file);}};
+  // Keep following known sessions even after their creation date ages out.
+  for(const file of this.files.keys())tail(file);
+  const visit=(dir,depth=0,older=false)=>{if(depth>4)return;let entries;try{entries=fs.readdirSync(dir,{withFileTypes:true});}catch{return;}
+   for(const e of entries){const file=path.join(dir,e.name);if(e.isDirectory())visit(file,depth+1,older);else if(e.name.endsWith('.jsonl')){
+    if(older&&!this.files.has(file)){try{if(fs.statSync(file).mtimeMs<this.watchStartedAt-300000)continue;}catch{continue;}}
+    tail(file);
+   }}};
+  // Fast discovery for new sessions; periodically find resumed older files.
   for(let n=0;n<2;n++){const d=new Date(Date.now()-n*86400000);visit(path.join(this.root,String(d.getFullYear()),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')));}
+  if(!this.lastFullScanAt||Date.now()-this.lastFullScanAt>=10000){this.lastFullScanAt=Date.now();visit(this.root,0,true);}
  }
  tail(file){try{
   const stat=fs.statSync(file);let t=this.files.get(file);
@@ -58,7 +66,10 @@ class CodexObserver{
    // Metadata is at the beginning, outside the tail of a long session.
    const metaFd=fs.openSync(file,'r');try{const header=Buffer.alloc(Math.min(stat.size,65536));fs.readSync(metaFd,header,0,header.length,0);const line=header.toString('utf8').split('\n')[0];try{const row=JSON.parse(line);if(row.type==='session_meta')mapRecord(row,t);}catch{}}finally{fs.closeSync(metaFd);}
    // Bootstrap metadata/quota only; never replay old notifications.
-   this.read(file,t,Math.max(0,stat.size-262144),stat.size,true);return;}
+   const newlyCreated=this.initialScanComplete&&stat.birthtimeMs>=this.watchStartedAt;
+   this.read(file,t,newlyCreated?0:Math.max(0,stat.size-262144),stat.size,!newlyCreated);
+   if(!newlyCreated&&t.active&&!t.ignored){const calls=[...(t.calls?.values()||[])];this.onEvent({source:'codex',session_id:t.id,event:calls.length||t.work?'tool_start':'prompt',message:calls.at(-1)?.message||(t.work?'작업 진행 중':'생각 중'),editingFiles:calls.flatMap(c=>c.files),startedAt:t.startedAt});}
+   return;}
   if(stat.size<t.offset){t.offset=0;t.pending='';t.decoder=new StringDecoder('utf8');t.active=false;t.work=false;}
   if(stat.size>t.offset)this.read(file,t,t.offset,stat.size,false);
  }catch{}}
@@ -68,6 +79,7 @@ class CodexObserver{
   t.decoder ||= new StringDecoder('utf8');let text=t.pending+t.decoder.write(b);if(bootstrap&&start>0)text=text.slice(text.indexOf('\n')+1);
   const lines=text.split('\n');t.pending=lines.pop();
   for(const line of lines){let row;try{row=JSON.parse(line);}catch{continue;}
+   if(bootstrap&&!t.active&&row.type==='response_item'&&['function_call','custom_tool_call','function_call_output','custom_tool_call_output'].includes(row.payload?.type)){t.active=true;t.work=true;t.startedAt ||= Date.parse(row.timestamp)||Date.now();}
    const limits=row.payload?.rate_limits;if(limits)this.onLimits?.(limits);
    const ev=mapRecord(row,t);if(ev&&!bootstrap)this.onEvent(ev);
   }

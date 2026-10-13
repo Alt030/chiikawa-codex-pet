@@ -564,6 +564,7 @@ function showBubble(input) {
     quotaText: currentState.agentEvent === 'done' ? quota.text() : '',
     editingFiles: currentState.agentEvent === 'tool_start' ? currentState.editingFiles || [] : [],
     startedAt: currentState.sessionId && ['running','review'].includes(currentState.normalizedState) ? currentState.startedAt || null : null,
+    activeSessionCount: (currentState.sessions || []).filter(session => ['running','review'].includes(session.state)).length,
     items,
     bubbleScale: clampBubbleScale(settings.bubbleScale || 1)
   };

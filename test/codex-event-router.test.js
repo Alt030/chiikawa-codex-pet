@@ -15,7 +15,7 @@ test('parallel hooks keep running and filenames until their own result; Stop hoo
  assert.equal(s.router.hook(hook('Stop','Edit','two')),false);s.router.hook(hook('PostToolUse','Edit','two'));assert.equal(s.output.at(-1).event,'tool_end');
 });
 test('short tools disappear, and duplicate starts do not restart the delay',()=>{
- const s=setup();s.router.hook(hook('PreToolUse','Bash','one'));s.router.hook(hook('PostToolUse','Bash','one'));s.tick();assert.equal(s.output.length,0);
+ const s=setup();s.router.hook(hook('PreToolUse','Bash','one'));s.router.hook(hook('PostToolUse','Bash','one'));s.tick();assert.equal(s.output.length,1);assert.equal(s.output[0].event,'tool_activity');
  s.router.rollout({session_id:'a',event:'tool_start',message:'자료 읽는 중'});s.router.hook(hook('PreToolUse','Bash','two'));s.tick();assert.equal(s.output.at(-1).message,'명령 실행 중');
 });
 test('hook-free packaged app classifies orchestrated operations safely',()=>{
@@ -28,3 +28,4 @@ test('delayed rollout start preserves already received hooks and true start time
  const s=setup(),startedAt=Date.now()-500;s.router.hook(hook('PreToolUse','Bash','one'));
  s.router.rollout({session_id:'a',event:'prompt',message:'생각 중',startedAt});s.tick();assert.equal(s.output.at(-1).message,'명령 실행 중');assert.equal(s.output.at(-1).startedAt,startedAt);
 });
+

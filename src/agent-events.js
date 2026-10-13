@@ -187,6 +187,7 @@ function buildDecision(payload) {
       message: pickMessage(payload, state === "waiting" ? `${label} 正在跑检查` : `${label} 正在执行工具`)
     };
   }
+  if(event==='tool_activity')return {source,event,sessionId,persistentState:'running',message:pickMessage(payload,'작업 진행 중')};
 
   if (event === "tool_end" || event === "review") {
     return {
