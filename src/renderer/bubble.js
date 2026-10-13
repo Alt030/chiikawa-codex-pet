@@ -3,7 +3,7 @@ let lastKey='',lastPhrase='',lastAsset=null;
 function measure(){const r=bubble.getBoundingClientRect();window.desktopPet.measureBubble({width:Math.ceil(r.width),height:Math.ceil(r.height)});}
 window.desktopPet.onBubbleMessage(p=>{
  bubble.replaceChildren();document.documentElement.style.setProperty('--bubble-scale',String(p.bubbleScale||1));
- const id=p.pet?.id==='kurimanju'?'kurimanju':'shisa';const state=p.state||'idle';
+ const id=p.pet?.id==='kurimanju'?'kurimanju':'shisa';const state=PetReactionPolicy.phraseState(p.event,p.state);
  const key=[id,state,p.event,p.message].join('|');if(key!==lastKey){lastPhrase=PetReactionPolicy.pickPhrase(id,state,Math.random,p.message);lastAsset=PetReactionPolicy.reactionAsset(id,p.event,Math.random,p.message);lastKey=key;}
  const idleChatter=String(p.event||'').startsWith('idle_chatter_');if(idleChatter)lastPhrase=p.message||'';
  const asset=lastAsset;

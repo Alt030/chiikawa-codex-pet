@@ -9,18 +9,24 @@ function mapRecord(row,t){
  if(t.ignored)return;
  const event=(name,message,extra={})=>({source:'codex',event:name,session_id:t.id,message,...extra});
  if(row.type==='event_msg'){
-  if(p.type==='task_started'){t.active=true;t.work=false;t.calls=new Map();return event('prompt','생각 중');}
-  if(p.type==='task_complete'){t.active=false;return event('done','작업 완료');}
+  if(p.type==='task_started'){t.active=true;t.work=false;t.finalSeen=false;t.turnId=p.turn_id;t.calls=new Map();return event('prompt','생각 중');}
+  if(p.type==='task_complete'){
+   if(t.turnId&&p.turn_id&&t.turnId!==p.turn_id)return;
+   if(t.calls?.size)return;
+   if(!t.finalSeen&&!(typeof p.last_agent_message==='string'&&p.last_agent_message.trim()))return;
+   t.active=false;return event('done','작업 완료');
+  }
   if(p.type==='turn_aborted'){t.active=false;return event('session_end','작업 중단');}
   if(p.type==='error'||p.type==='stream_error')return event('tool_failed','오류 발생');
-  if(/approval_request$/.test(p.type||'')||p.type==='request_user_input')return event('waiting','확인 필요');
+  if(/approval_request$/.test(p.type||''))return event('tool_start','권한 확인 중');
+  if(p.type==='request_user_input')return event('waiting','사용자 입력 대기');
  }
  if(row.type!=='response_item'||!t.active)return;
  if(['function_call','custom_tool_call','web_search_call'].includes(p.type)){
   t.work=true;const tool=p.type==='web_search_call'?'web_search':p.name;
   const raw=p.arguments||p.input;const input=parseInput(raw);const files=editingFiles(tool,raw);
   const message=files.length?'코드 수정 중':labels[classifyTool({tool_name:tool,tool_input:input})];
-  t.calls ||= new Map();t.calls.set(p.call_id||p.id||tool,{files,message,tool});
+  t.calls ||= new Map();if(p.type!=='web_search_call')t.calls.set(p.call_id||p.id||tool,{files,message,tool});
   return event('tool_start',message,{tool_name:tool,tool_input:input,editingFiles:files});
  }
  if(['function_call_output','custom_tool_call_output'].includes(p.type)){
@@ -30,7 +36,7 @@ function mapRecord(row,t){
  }
  if(p.type==='reasoning'&&!t.work)return event('thinking','생각 중');
  // A saved final answer is evidence of answer output, not of future preparation.
- if(p.type==='message'&&p.phase==='final_answer')return event('review','답변 작성 중');
+ if(p.type==='message'&&p.phase==='final_answer'){t.finalSeen=true;return event('review','답변 작성 중');}
 }
 class CodexObserver{
  constructor(root,onEvent,onLimits){this.root=root;this.onEvent=onEvent;this.onLimits=onLimits;this.files=new Map();}

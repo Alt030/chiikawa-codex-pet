@@ -1170,7 +1170,7 @@ async function handleApiRequest(req, res) {
       if(decision.source==='codex'&&decision.event==='tool_end')resumeCodexTool({session_id:decision.sessionId.slice('codex:'.length)},true);
       // Rollout is authoritative for Codex lifecycle. Hooks retain permissions
       // and transient failures without duplicate start/completion notifications.
-      if(decision.source==='codex' && ['prompt','tool_start','tool_end','done','session_start'].includes(decision.event)) {
+      if(decision.source==='codex' && !decision.approvalCheck && ['prompt','tool_start','tool_end','done','session_start'].includes(decision.event)) {
         sendJson(res,202,{ok:true,ignored:true,reason:'Codex rollout observer handles this event'});return;
       }
       if (decision.source !== getActiveHookAgent()) {

@@ -44,6 +44,8 @@ const phrases={
   }
 };
 const shisaStatusPhrases={
+  "권한 확인 중": ["샤부님~ 실행할 수 있는지 확인하고 있어요! (확인하는 시사)"],
+  "다음 단계 진행 중": ["샤부님~ 다음 단계도 이어서 할게요! (일하는 시사)"],
   "웹 검색 중": [
     "샤부님~ 찾아보고 있어요! (열심히 찾는 시사)",
     "어디 있을까요~? 더 찾아볼게요! (두리번거리는 시사)"
@@ -136,5 +138,13 @@ function reactionAsset(id,event,random=Math.random,message=""){
  const list=reactionPools[id]?.[event]||[];if(!list.length)return null;const key=id+':'+event;let n=reactionCounters[key]||0;try{n=Number(localStorage.getItem('reaction-rotation:'+key))||n;}catch{}const chosen=list[n%list.length];reactionCounters[key]=n+1;try{localStorage.setItem('reaction-rotation:'+key,String(n+1));}catch{}return chosen;}
 
 function pickPhrase(id,state,random=Math.random,message=""){const options=(id==="shisa"&&state!=="failed"&&shisaStatusPhrases[message])||phrases[id]?.[state]||[];if(!options.length)return "";return options[Math.min(options.length-1,Math.floor(random()*options.length))];}
-const api={reactionAsset,pickPhrase,reactionPools};if(typeof module==='object'&&module.exports)module.exports=api;else root.PetReactionPolicy=api;
+function phraseState(event,state){
+ if(event==='done')return 'jumping';
+ if(event==='waiting')return 'waiting';
+ if(event==='tool_start'||event==='tool_end')return 'running';
+ if(state==='jumping')return 'idle';
+ if(state==='waiting')return 'running';
+ return state||'idle';
+}
+const api={reactionAsset,pickPhrase,reactionPools,phraseState};if(typeof module==='object'&&module.exports)module.exports=api;else root.PetReactionPolicy=api;
 })(globalThis);
