@@ -1,4 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');const {SessionManager}=require('../src/session-manager');const {buildDecision}=require('../src/agent-events');const {elapsedText}=require('../src/renderer/reaction-policy');
+test('desktop epoch seconds and ISO timestamps preserve real turn start',()=>{
+ const {mapRecord}=require('../src/codex-observer');for(const started_at of [1791903707,1791903707000,'2026-10-13T15:01:47.000Z'])assert.equal(mapRecord({type:'event_msg',payload:{type:'task_started',started_at}},{id:'a'}).startedAt,1791903707000);
+});
 test('turn start survives tool changes and permission checks, resets on next prompt',()=>{
  let now=1000;const s=new SessionManager({now:()=>now});const d=event=>buildDecision({source:'codex',session_id:'a',event});
  const prompt=d('prompt');prompt.startedAt=500;s.apply(prompt);now=91000;assert.equal(s.apply(d('tool_start')).display.startedAt,500);

@@ -4,12 +4,13 @@ const fs=require('node:fs'),path=require('node:path');
 const {classifyTool,labels}=require('./tool-status');
 const {editingFiles}=require('./editing-files');
 function parseInput(value){try{return typeof value==='string'?JSON.parse(value):value||{};}catch{return {};}}
+function turnStartedAt(p,row){const value=p.started_at;return typeof value==='number'&&Number.isFinite(value)?(value<1e12?value*1000:value):Date.parse(value||row.timestamp)||Date.now();}
 function mapRecord(row,t){
  const p=row.payload||{};if(row.type==='session_meta'){t.id=p.id||t.id;t.ignored=Boolean(p.source?.subagent);return;}
  if(t.ignored)return;
  const event=(name,message,extra={})=>({source:'codex',event:name,session_id:t.id,message,startedAt:t.startedAt,...extra});
  if(row.type==='event_msg'){
-  if(p.type==='task_started'){t.active=true;t.work=false;t.finalSeen=false;t.turnId=p.turn_id;t.startedAt=Date.parse(p.started_at||row.timestamp)||Date.now();t.calls=new Map();return event('prompt','생각 중');}
+  if(p.type==='task_started'){t.active=true;t.work=false;t.finalSeen=false;t.turnId=p.turn_id;t.startedAt=turnStartedAt(p,row);t.calls=new Map();return event('prompt','생각 중');}
   if(p.type==='task_complete'){
    if(t.turnId&&p.turn_id&&t.turnId!==p.turn_id)return;
    if(t.calls?.size)return;
