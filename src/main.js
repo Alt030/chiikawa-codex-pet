@@ -1352,9 +1352,20 @@ function buildTrayMenu() {
  return Menu.buildFromTemplate([
  {label:"보이기 / 숨기기",click:()=>{if(!win)return;if(win.isVisible()){win.hide();bubbleWin?.hide();}else win.show();}},
  {label:"캐릭터 선택",submenu:["shisa","kurimanju"].map(id=>({label:id==="shisa"?"시사":"쿠리만쥬",type:"radio",checked:activePet?.id===id,click:()=>{selectPet(id);rebuildTrayMenu();}}))},
+ {label:'캐릭터 위치 초기화',click:resetPetPosition},
  {type:'separator'},
  {label:updateMenuLabel(updateStatus),enabled:!updateCheckInProgress&&!updateDownloadInProgress&&!updateInstallStarted,click:()=>checkForUpdates(true)}
  ]);
+}
+
+function resetPetPosition(){
+ if(!win||win.isDestroyed())return;
+ const area=screen.getPrimaryDisplay().workArea;
+ const zoom=Math.min(clampZoom(settings.zoom||1),area.width/BASE_WINDOW_WIDTH,area.height/BASE_WINDOW_HEIGHT);
+ const bounds=constrainBounds({x:area.x+40,y:area.y+220,width:Math.round(BASE_WINDOW_WIDTH*zoom),height:Math.round(BASE_WINDOW_HEIGHT*zoom)},area);
+ win.setBounds(bounds);settings.zoom=zoom;settings.windowBounds=win.getBounds();saveSettings();
+ broadcastZoom();win.show();positionBubble();
+ if(currentState.message)showBubble(buildBubbleItems(currentState));
 }
 
 function rebuildTrayMenu() {
