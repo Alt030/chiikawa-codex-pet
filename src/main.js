@@ -36,6 +36,7 @@ const toolDisplayGate = new ToolDisplayGate(body => {
   if(getActiveHookAgent() !== 'codex') return;
   const decision=buildDecision(body);if(!decision)return;
   decision.editingFiles=body.editingFiles||[];
+  decision.startedAt=body.startedAt;
   if(body.event==='tool_end') decision.persistentState='running';
   if(activePet?.id==='kurimanju') fatigue.observe(decision.event,decision.sessionId);
   applyAgentDecision(decision);
@@ -571,6 +572,7 @@ function showBubble(input) {
     event: currentState.agentEvent || "",
     quotaText: currentState.agentEvent === 'done' ? quota.text() : '',
     editingFiles: currentState.agentEvent === 'tool_start' ? currentState.editingFiles || [] : [],
+    startedAt: currentState.sessionId && ['running','review'].includes(currentState.normalizedState) ? currentState.startedAt || null : null,
     items,
     bubbleScale: clampBubbleScale(settings.bubbleScale || 1)
   };
@@ -635,6 +637,7 @@ function broadcastAgentAggregate() {
     sessionId: aggregate.sessionId,
     agentEvent: aggregate.event || "aggregate",
     editingFiles: aggregate.editingFiles || [],
+    startedAt: aggregate.startedAt || null,
     sessions: agentSessions.list()
   });
 }
@@ -689,6 +692,7 @@ function commitAgentDecision(decision) {
     sessionId: result.display.sessionId,
     agentEvent: result.display.agentEvent,
     editingFiles: result.display.editingFiles || [],
+    startedAt: result.display.startedAt,
     sessions: result.sessions
   });
 

@@ -146,5 +146,10 @@ function phraseState(event,state){
  if(state==='waiting')return 'running';
  return state||'idle';
 }
-const api={reactionAsset,pickPhrase,reactionPools,phraseState};if(typeof module==='object'&&module.exports)module.exports=api;else root.PetReactionPolicy=api;
+function elapsedText(startedAt,now=Date.now()){
+ if(!Number.isFinite(startedAt))return '';
+ const minutes=Math.floor(Math.max(0,now-startedAt)/60000);
+ return '작업 중 · '+(minutes<1?'1분 미만':minutes+'분 경과');
+}
+const api={reactionAsset,pickPhrase,reactionPools,phraseState,elapsedText};if(typeof module==='object'&&module.exports)module.exports=api;else root.PetReactionPolicy=api;
 })(globalThis);

@@ -53,6 +53,7 @@ class SessionManager {
         message: decision.message || "",
         event: decision.event,
         editingFiles: decision.editingFiles || [],
+        startedAt: Number.isFinite(decision.startedAt) ? decision.startedAt : decision.event==='prompt' ? atMs : existing?.startedAt ?? atMs,
         updatedAt,
         updatedAtMs: atMs,
         recentEvents: pushRecentEvent(existing, decision, updatedAt)
@@ -80,6 +81,7 @@ class SessionManager {
       sessionId: showDecision ? sessionId : aggregate.sessionId,
       agentEvent: showDecision ? decision.event : aggregate.event,
       editingFiles: showDecision ? decision.editingFiles || [] : aggregate.editingFiles || [],
+      startedAt: decision.terminal && showDecision ? null : aggregate.startedAt || null,
       durationMs: showDecision ? Math.max(0, Math.min(Number(decision.durationMs) || 0, 60_000)) : 0,
       returnState: aggregate
     };
@@ -103,6 +105,7 @@ class SessionManager {
       source: top.source,
       event: top.event,
       editingFiles: top.editingFiles || [],
+      startedAt: top.startedAt,
       updatedAt: top.updatedAt
     };
   }
@@ -117,6 +120,7 @@ class SessionManager {
         message: session.message,
         event: session.event,
         editingFiles: session.editingFiles || [],
+        startedAt: session.startedAt,
         updatedAt: session.updatedAt,
         recentEvents: session.recentEvents
       }));
