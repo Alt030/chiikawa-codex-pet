@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, screen, shell, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
+const {attachImmediateInstall,updateMenuLabel}=require('./immediate-updates');
 app.setPath("userData", app.isPackaged ? require('node:path').join(app.getPath('appData'),'ChiikawaCodexPet') : require("node:path").join(__dirname, "..", "runtime"));
 if(!app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance',()=>{if(win&&!win.isDestroyed())win.show();});
@@ -110,6 +111,7 @@ let pendingBubblePayload = null;
 let updateCheckInProgress = false;
 let updateDownloadInProgress = false;
 let updateDownloaded = false;
+let manualUpdateRequested = false;
 let updateInstallStarted = false;
 let updatePromptVisible = false;
 let pendingUpdateInfo = null;
@@ -318,6 +320,7 @@ function setUpdateStatus(nextStatus) {
     updatedAt: new Date().toISOString()
   };
   sendToWindows("pet:update-status", updateStatus);
+  rebuildTrayMenu();
   return updateStatus;
 }
 
@@ -338,39 +341,11 @@ function isUpdateAvailableInThisRuntime(manual) {
   if (manual) {
     setUpdateStatus({
       status: "disabled",
-      message: "开发模式不会检查自动更新，打包安装后可用",
+      message: "개발 실행에서는 자동 업데이트를 사용할 수 없어요.",
       progress: 0
     });
   }
   return false;
-}
-
-function sendUpdateReadyPrompt(info) {
-  if (updatePromptVisible || updateInstallStarted) return;
-  updatePromptVisible = true;
-  const ownerWindow = settingsWin && !settingsWin.isDestroyed()
-    ? settingsWin
-    : (win && !win.isDestroyed() ? win : null);
-  const options = {
-    type: "info",
-    title: "업데이트 준비 완료",
-    message: `Chiikawa Codex Pet ${info?.version || ""} 다운로드가 완료됐어요.`,
-    detail: "다시 시작하면 새 버전이 설치됩니다.",
-    buttons: ["다시 시작하고 설치", "나중에"],
-    defaultId: 0,
-    cancelId: 1
-  };
-  const prompt = ownerWindow
-    ? dialog.showMessageBox(ownerWindow, options)
-    : dialog.showMessageBox(options);
-
-  prompt.then((result) => {
-    updatePromptVisible = false;
-    if (result.response === 0) installDownloadedUpdate();
-  }).catch((error) => {
-    updatePromptVisible = false;
-    console.warn(`Failed to show update prompt: ${error.message}`);
-  });
 }
 
 function setupAutoUpdater() {
@@ -380,7 +355,7 @@ function setupAutoUpdater() {
   autoUpdater.on("checking-for-update", () => {
     setUpdateStatus({
       status: "checking",
-      message: "正在检查更新...",
+      message: "업데이트 확인 중…",
       progress: 0
     });
   });
@@ -391,7 +366,7 @@ function setupAutoUpdater() {
     updateDownloadInProgress = true;
     setUpdateStatus({
       status: "downloading",
-      message: `发现新版本 ${pendingUpdateInfo.version || ""}，正在下载...`,
+      message: `새 버전 ${pendingUpdateInfo.version || ""} 다운로드 중…`,
       progress: 0,
       updateInfo: pendingUpdateInfo
     });
@@ -402,16 +377,17 @@ function setupAutoUpdater() {
     updateDownloadInProgress = false;
     setUpdateStatus({
       status: "latest",
-      message: "当前已是最新版本",
+      message: "현재 최신 버전이에요.",
       progress: 0
     });
+    if(manualUpdateRequested){tray?.displayBalloon({title:'업데이트 확인',content:'현재 최신 버전이에요.'});manualUpdateRequested=false;}
   });
 
   autoUpdater.on("download-progress", (progress) => {
     const percent = Number(progress?.percent) || 0;
     setUpdateStatus({
       status: "downloading",
-      message: `正在下载更新 ${Math.round(percent)}%`,
+      message: `업데이트 다운로드 중 · ${Math.round(percent)}%`,
       progress: Math.max(0, Math.min(100, percent)),
       transferred: progress?.transferred || 0,
       total: progress?.total || 0,
@@ -427,11 +403,10 @@ function setupAutoUpdater() {
     updateDownloaded = true;
     setUpdateStatus({
       status: "ready",
-      message: `新版本 ${pendingUpdateInfo.version || ""} 已下载，重启后安装`,
+      message: `새 버전 ${pendingUpdateInfo.version || ""} 다운로드 완료`,
       progress: 100,
       updateInfo: pendingUpdateInfo
     });
-    sendUpdateReadyPrompt(pendingUpdateInfo);
   });
 
   autoUpdater.on("error", (error) => {
@@ -439,32 +414,30 @@ function setupAutoUpdater() {
     updateDownloadInProgress = false;
     setUpdateStatus({
       status: "error",
-      message: error?.message || "自动更新检查失败",
+      message: error?.message || "업데이트 확인에 실패했어요.",
       progress: 0,
       updateInfo: pendingUpdateInfo
     });
+    if(manualUpdateRequested){tray?.displayBalloon({title:'업데이트 확인 실패',content:'네트워크 연결을 확인하고 다시 시도해 주세요.'});manualUpdateRequested=false;}
   });
+  attachImmediateInstall(autoUpdater,()=>installDownloadedUpdate());
 }
 
 async function checkForUpdates(manual = false) {
+  if(manual)manualUpdateRequested=true;
   if (updateDownloaded) {
-    return setUpdateStatus({
-      status: "ready",
-      message: `新版本 ${pendingUpdateInfo?.version || ""} 已下载，重启后安装`,
-      progress: 100,
-      updateInfo: pendingUpdateInfo
-    });
+    return installDownloadedUpdate();
   }
 
   if (updateCheckInProgress || updateDownloadInProgress) {
     return setUpdateStatus({
       status: updateDownloadInProgress ? "downloading" : "checking",
-      message: updateDownloadInProgress ? "更新正在下载中..." : "正在检查更新...",
+      message: updateDownloadInProgress ? "업데이트 다운로드 중…" : "업데이트 확인 중…",
       updateInfo: pendingUpdateInfo
     });
   }
 
-  if (!isUpdateAvailableInThisRuntime(manual)) return getUpdateStatus();
+  if (!isUpdateAvailableInThisRuntime(manual)){if(manual){tray?.displayBalloon({title:'업데이트 확인',content:'자동 업데이트는 설치 파일로 설치한 앱에서 사용할 수 있어요.'});manualUpdateRequested=false;}return getUpdateStatus();}
 
   updateCheckInProgress = true;
   try {
@@ -473,7 +446,7 @@ async function checkForUpdates(manual = false) {
     updateCheckInProgress = false;
     return setUpdateStatus({
       status: "error",
-      message: error?.message || "自动更新检查失败",
+      message: error?.message || "업데이트 확인에 실패했어요.",
       progress: 0
     });
   }
@@ -486,7 +459,7 @@ function installDownloadedUpdate() {
   updateInstallStarted = true;
   setUpdateStatus({
     status: "installing",
-    message: "正在重启并安装更新...",
+    message: "다시 시작하고 업데이트를 설치하는 중…",
     progress: 100,
     updateInfo: pendingUpdateInfo
   });
@@ -1360,7 +1333,9 @@ function createApiServer() {
 function buildTrayMenu() {
  return Menu.buildFromTemplate([
  {label:"보이기 / 숨기기",click:()=>{if(!win)return;if(win.isVisible()){win.hide();bubbleWin?.hide();}else win.show();}},
- {label:"캐릭터 선택",submenu:["shisa","kurimanju"].map(id=>({label:id==="shisa"?"시사":"쿠리만쥬",type:"radio",checked:activePet?.id===id,click:()=>{selectPet(id);rebuildTrayMenu();}}))}
+ {label:"캐릭터 선택",submenu:["shisa","kurimanju"].map(id=>({label:id==="shisa"?"시사":"쿠리만쥬",type:"radio",checked:activePet?.id===id,click:()=>{selectPet(id);rebuildTrayMenu();}}))},
+ {type:'separator'},
+ {label:updateMenuLabel(updateStatus),enabled:!updateCheckInProgress&&!updateDownloadInProgress&&!updateInstallStarted,click:()=>checkForUpdates(true)}
  ]);
 }
 
@@ -1584,7 +1559,7 @@ app.whenReady().then(() => {
     checkForUpdates(false).catch((error) => {
       console.warn(`Silent update check failed: ${error.message}`);
     });
-  }, 5000);
+  }, 1000);
 });
 
 app.on("window-all-closed", (event) => {
@@ -1600,4 +1575,5 @@ app.on("before-quit", () => {
   if (reminderManager) reminderManager.stop();
   if (server) server.close();
 });
+
 
