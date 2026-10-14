@@ -68,7 +68,11 @@ class CodexObserver{
    // Bootstrap metadata/quota only; never replay old notifications.
    const newlyCreated=this.initialScanComplete&&stat.birthtimeMs>=this.watchStartedAt;
    this.read(file,t,newlyCreated?0:Math.max(0,stat.size-262144),stat.size,!newlyCreated);
-   if(!newlyCreated&&t.active&&!t.ignored){const calls=[...(t.calls?.values()||[])];this.onEvent({source:'codex',session_id:t.id,event:calls.length||t.work?'tool_start':'prompt',message:calls.at(-1)?.message||(t.work?'작업 진행 중':'생각 중'),editingFiles:calls.flatMap(c=>c.files),startedAt:t.startedAt});}
+   // Opening/touching a transcript is not evidence that its old turn is alive.
+   // Only restore recent explicit work at startup, or a turn started since watching.
+   const restore=t.active&&!t.ignored&&Number.isFinite(t.lastWorkAt)&&t.lastWorkAt>=this.watchStartedAt-15000&&(!this.initialScanComplete||t.startedAt>=this.watchStartedAt);
+   if(!newlyCreated&&restore){const calls=[...(t.calls?.values()||[])];this.onEvent({source:'codex',session_id:t.id,event:calls.length||t.work?'tool_start':'prompt',message:calls.at(-1)?.message||(t.work?'작업 진행 중':'생각 중'),editingFiles:calls.flatMap(c=>c.files),startedAt:t.startedAt});}
+   else if(!newlyCreated){t.active=false;t.work=false;t.calls?.clear();t.startedAt=null;t.turnId=null;t.finalSeen=false;}
    return;}
   if(stat.size<t.offset){t.offset=0;t.pending='';t.decoder=new StringDecoder('utf8');t.active=false;t.work=false;}
   if(stat.size>t.offset)this.read(file,t,t.offset,stat.size,false);
@@ -79,9 +83,18 @@ class CodexObserver{
   t.decoder ||= new StringDecoder('utf8');let text=t.pending+t.decoder.write(b);if(bootstrap&&start>0)text=text.slice(text.indexOf('\n')+1);
   const lines=text.split('\n');t.pending=lines.pop();
   for(const line of lines){let row;try{row=JSON.parse(line);}catch{continue;}
-   if(bootstrap&&!t.active&&row.type==='response_item'&&['function_call','custom_tool_call','function_call_output','custom_tool_call_output'].includes(row.payload?.type)){t.active=true;t.work=true;t.startedAt ||= Date.parse(row.timestamp)||Date.now();}
+   const recordedAt=Date.parse(row.timestamp);
+   // Resume/copy can append old rows to a new or existing file. Do not replay them.
+   if(!bootstrap&&Number.isFinite(recordedAt)&&recordedAt<this.watchStartedAt&&row.type!=='session_meta')continue;
+   // A fresh tool call proves resumed activity even when the original turn start
+   // is outside the bounded tail. An old tool output never proves activity.
+   if(!bootstrap&&!t.active&&row.type==='response_item'&&['function_call','custom_tool_call','web_search_call'].includes(row.payload?.type)){
+    t.active=true;t.work=true;t.startedAt=Number.isFinite(recordedAt)?recordedAt:Date.now();t.calls=new Map();
+   }
    const limits=row.payload?.rate_limits;if(limits)this.onLimits?.(limits);
-   const ev=mapRecord(row,t);if(ev&&!bootstrap)this.onEvent(ev);
+   const ev=mapRecord(row,t);
+   if(ev&&Number.isFinite(recordedAt)&&['prompt','tool_start','tool_end','thinking','review','waiting'].includes(ev.event))t.lastWorkAt=recordedAt;
+   if(ev&&!bootstrap)this.onEvent(ev);
   }
  }finally{fs.closeSync(fd);}}
 }

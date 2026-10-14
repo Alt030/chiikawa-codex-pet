@@ -2,7 +2,9 @@ const pet = document.getElementById("pet");
 const stage = document.querySelector(".stage");
 const sprite = document.getElementById("sprite");
 const workingArtwork=document.getElementById('workingArtwork');
-function updateWorkingArtwork(){const show=currentPet?.id==='shisa'&&currentState==='running';workingArtwork.hidden=!show;pet.dataset.workingArtwork=String(show);sprite.style.visibility=show?'hidden':'';}
+const hangoverArtwork=document.getElementById('hangoverArtwork');
+function isHungover(){return fatigueActive&&currentPet?.id==='kurimanju';}
+function updateWorkingArtwork(){const show=currentPet?.id==='shisa'&&currentState==='running';const hungover=isHungover();workingArtwork.hidden=!show;hangoverArtwork.hidden=!hungover;pet.dataset.workingArtwork=String(show);sprite.style.visibility=show||hungover?'hidden':'';}
 const fallback = document.getElementById("fallback");
 const resizeHandle = document.getElementById("resizeHandle");
 
@@ -36,9 +38,8 @@ const STATE_ALIASES = {
 };
 
 let fatigueActive=false;
-let tintedAtlas=null;
 let currentPet = null;
-function applyFatigue(){const tired=fatigueActive&&currentPet?.id==="kurimanju";pet.dataset.tired=String(tired);if(currentPet?.spritesheetUrl)sprite.style.backgroundImage=`url("${tired&&tintedAtlas?tintedAtlas:currentPet.spritesheetUrl}")`;}
+function applyFatigue(){pet.dataset.tired=String(isHungover());updateWorkingArtwork();if(isHungover())clearTimeout(frameTimer);else scheduleNextFrame();}
 window.desktopPet.onFatigueChange(p=>{fatigueActive=Boolean(p.tired);applyFatigue();});
 let currentState = "idle";
 let frameIndex = 0;
@@ -90,6 +91,8 @@ function updateSpriteMetrics() {
   sprite.style.backgroundSize = `${CELL_WIDTH * 8 * atlasScale}px ${CELL_HEIGHT * 9 * atlasScale}px`;
   workingArtwork.style.width=`${CELL_WIDTH * atlasScale}px`;
   workingArtwork.style.height=`${CELL_HEIGHT * atlasScale}px`;
+  hangoverArtwork.style.width=`${CELL_WIDTH * atlasScale}px`;
+  hangoverArtwork.style.height=`${CELL_HEIGHT * atlasScale}px`;
 }
 
 function drawFrame() {
@@ -103,6 +106,7 @@ function drawFrame() {
 
 function scheduleNextFrame() {
   clearTimeout(frameTimer);
+  if(isHungover())return;
 
   const rowDef = ROWS[currentState] || ROWS.idle;
   const duration = rowDef.durations[frameIndex] || 160;
@@ -130,9 +134,6 @@ function setAnimationState(state) {
 function setPet(petPayload) {
   currentPet = petPayload || null;
   updateWorkingArtwork();
-  tintedAtlas=null;
-  const selected=currentPet;
-  if(selected?.id==="kurimanju"){const image=new Image();image.onload=()=>{if(currentPet!==selected)return;const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext("2d");ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height);PetFaceTint.tintAtlas(pixels.data,image.width,image.height);ctx.putImageData(pixels,0,0);tintedAtlas=canvas.toDataURL("image/png");applyFatigue();};image.src=selected.spritesheetUrl;}
 
   if (!currentPet?.spritesheetUrl) {
     sprite.classList.remove("ready");

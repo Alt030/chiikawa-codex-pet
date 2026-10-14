@@ -1441,7 +1441,7 @@ app.whenReady().then(() => {
       broadcastState({state:'sleeping',message:'',source:null,sessionId:null,agentEvent:'idle_sleep',editingFiles:[]});return;
     }
     const kuri=activePet?.id==='kurimanju';
-    const message=kuri?'흠...':stage==='first'?'샤부님~ 잠깐 쉬고 계세요? (궁금한 시사)':'샤부님~ 저도 공부하고 있을게요! (공부하는 시사)';
+    const message=kuri?'흠....(잠깐 쉬는 쿠리만쥬)':stage==='first'?'샤부님~ 잠깐 쉬고 계세요? (궁금한 시사)':'샤부님~ 저도 공부하고 있을게요! (공부하는 시사)';
     broadcastState({state:stage==='first'?'waving':'review',message,source:null,sessionId:null,agentEvent:'idle_chatter_'+stage,editingFiles:[]});
     idleBubbleReturnTimer=setTimeout(()=>{
       if(currentState.agentEvent?.startsWith('idle_chatter_'))broadcastState({state:'idle',message:'',source:null,sessionId:null,agentEvent:'idle_rest'});
@@ -1643,5 +1643,6 @@ app.on("before-quit", () => {
   if (reminderManager) reminderManager.stop();
   if (server) server.close();
 });
+
 
 

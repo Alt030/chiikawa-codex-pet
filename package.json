@@ -1,6 +1,6 @@
 {
   "name": "chiikawa-codex-pet",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Windows Codex companion with Shisa and Kurimanju",
   "main": "src/main.js",
   "scripts": {
