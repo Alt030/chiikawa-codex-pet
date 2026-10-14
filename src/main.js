@@ -1422,11 +1422,12 @@ app.whenReady().then(() => {
       // Schedule notices do not change the Codex session state or completion status.
       if(!bubbleWin||bubbleWin.isDestroyed()||!win?.isVisible())return;
       clearTimeout(bubbleTimer);
-      plannerSpeechUntil=Date.now()+(options.kind==='added'?7000:15000);
+      const noticeDuration=options.kind==='reminder'?12000:7000;
+      plannerSpeechUntil=Date.now()+noticeDuration;
       const payload={event:'planner_notice',message,speech:options.speech||'',pet:toPetPayload(activePet),bubbleScale:clampBubbleScale(settings.bubbleScale||1)};
       positionBubble();bubbleWin.showInactive();
       if(bubbleReady)bubbleWin.webContents.send('bubble:set-message',payload);else pendingBubblePayload=payload;
-      bubbleTimer=setTimeout(()=>{plannerSpeechUntil=0;if(currentState.message)showBubble(buildBubbleItems(currentState));else bubbleWin?.hide();},options.kind==='added'?7000:15000);
+      bubbleTimer=setTimeout(()=>{plannerSpeechUntil=0;if(currentState.message)showBubble(buildBubbleItems(currentState));else bubbleWin?.hide();},noticeDuration);
     }});
     planner.start();
   }catch(error){console.warn('일정 관리 시작 실패:',error.message);}

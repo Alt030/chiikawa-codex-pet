@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id);
 let state=null,tab='today',editingId=null,deletedTask=null,saving=false,settingsDirty=false;
+let noticeTimer=null,undoTimer=null;
 function localDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function shortDate(date){return new Intl.DateTimeFormat('ko-KR',{month:'numeric',day:'numeric',weekday:'short'}).format(new Date(date+'T12:00:00'));}
 function error(message=''){$('error').textContent=message;$('error').hidden=!message;}
@@ -8,7 +9,9 @@ function render(next){
  const previousToday=state?.today;
  state=next;$('dateLabel').textContent=shortDate(state.today);$('todayCount').textContent=state.tasks.filter(t=>!t.doneAt&&t.date<=state.today).length;
  if(previousToday&&previousToday!==state.today&&!editingId&&!$('title').value.trim()&&$('date').value===previousToday)$('date').value=state.today;
- $('notice').hidden=!state.notice;$('notice').textContent=state.notice||'';
+ clearTimeout(noticeTimer);
+ $('notice').hidden=!state.notice||Date.now()>=state.noticeUntil;$('notice').textContent=state.notice||'';
+ if(!$('notice').hidden)noticeTimer=setTimeout(()=>{$('notice').hidden=true;},Math.max(0,state.noticeUntil-Date.now()));
  if(!settingsDirty){$('morningEnabled').checked=state.morningEnabled;$('morningTime').value=state.morningTime;}
  $('shortcut').textContent='바로 열기 · '+state.shortcut;
  const todayTasks=state.tasks.filter(t=>t.date===state.today);const count=todayTasks.filter(t=>t.doneAt).length;
@@ -26,7 +29,7 @@ function render(next){
   const check=document.createElement('button');check.className='check';check.textContent=task.doneAt?'✓':'';check.setAttribute('aria-label',task.title+(task.doneAt?' 완료 취소':' 완료'));check.addEventListener('click',()=>mutate({action:'complete',id:task.id}));
   const copy=document.createElement('div');copy.className='task-copy';const title=document.createElement('button');title.className='task-title';title.textContent=task.title;title.title='눌러서 수정';title.addEventListener('click',()=>{editingId=task.id;$('title').value=task.title;$('date').value=task.date;$('time').value=task.time;$('editing').hidden=false;$('submit').textContent='✓';$('submit').setAttribute('aria-label','수정 저장');$('title').focus();});
   const meta=document.createElement('div');meta.className='task-meta'+(task.date<state.today&&!task.doneAt?' overdue':'');meta.textContent=(task.time||'시간 미정')+(task.doneAt?' · 완료':task.date<state.today?' · 미완료':'');copy.append(title,meta);
-  const remove=document.createElement('button');remove.className='remove';remove.textContent='×';remove.setAttribute('aria-label',task.title+' 삭제');remove.addEventListener('click',async()=>{if(await mutate({action:'delete',id:task.id})){deletedTask={...task};$('undo').hidden=false;}});
+  const remove=document.createElement('button');remove.className='remove';remove.textContent='×';remove.setAttribute('aria-label',task.title+' 삭제');remove.addEventListener('click',async()=>{if(await mutate({action:'delete',id:task.id})){deletedTask={...task};$('undo').hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(()=>{$('undo').hidden=true;deletedTask=null;},5000);}});
   row.append(check,copy,remove);$('list').append(row);
  }
 }
@@ -45,6 +48,6 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()
 $('settingsToggle').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;$('settingsToggle').setAttribute('aria-expanded',String(!$('settings').hidden));});
 for(const id of ['morningEnabled','morningTime'])$(id).addEventListener('input',()=>{settingsDirty=true;});
 $('saveSettings').addEventListener('click',async()=>{if(await mutate({action:'settings',morningEnabled:$('morningEnabled').checked,morningTime:$('morningTime').value})){settingsDirty=false;$('settings').hidden=true;$('settingsToggle').setAttribute('aria-expanded','false');}});
-$('undoDelete').addEventListener('click',async()=>{if(deletedTask&&await mutate({action:'restore',task:deletedTask})){deletedTask=null;$('undo').hidden=true;}});
+$('undoDelete').addEventListener('click',async()=>{if(deletedTask&&await mutate({action:'restore',task:deletedTask})){clearTimeout(undoTimer);deletedTask=null;$('undo').hidden=true;}});
 window.planner.onChange(render);
 window.planner.get().then(data=>{render(data);resetForm();}).catch(e=>error(e.message));

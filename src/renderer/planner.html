@@ -2,7 +2,7 @@
 <html lang="ko">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'"><title>오늘 일정</title><link rel="stylesheet" href="planner.css"></head>
 <body>
- <header><div class="heading"><span class="eyebrow">MY DAY</span><h1>오늘 일정</h1><p id="dateLabel"></p></div><button id="close" class="icon" aria-label="닫기">×</button></header>
+ <header><div class="heading"><span class="eyebrow">MY DAY</span><h1>오늘 일정<span class="heading-pets"><img class="heading-pet" src="../assets/planner/chiikawa.png" alt="치이카와" width="34" height="34"><img class="heading-pet" src="../assets/planner/hachiware.png" alt="하치와레" width="34" height="34"><img class="heading-pet" src="../assets/planner/usagi.png" alt="우사기" width="34" height="34"></span></h1><p id="dateLabel"></p></div><button id="close" class="icon" aria-label="닫기">×</button></header>
  <div id="notice" class="notice" hidden></div>
  <section class="capture">
   <form id="taskForm"><label class="sr-only" for="title">일정 제목</label><div class="input-row"><input id="title" maxlength="240" placeholder="할 일을 적고 Enter" autocomplete="off" required><button id="submit" type="submit" aria-label="일정 추가">+</button></div>

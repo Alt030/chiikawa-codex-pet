@@ -22,9 +22,10 @@ function installPlanner({userData,getPetWindow,onNotice,getRegistrationSpeech,ge
   data.notifications ||= {};
   for(const task of data.tasks)if(data.notifications[task.id]===true)data.notifications[task.id]=task.date+'T'+task.time;
  }
- let panel=null,timer=null,notice='';
+ let panel=null,timer=null,notice='',noticeUntil=0;
+ function setNotice(message,duration=4000){notice=message;noticeUntil=Date.now()+duration;}
  function save(){fs.mkdirSync(userData,{recursive:true});fs.writeFileSync(file+'.tmp',JSON.stringify(data,null,2),'utf8');fs.renameSync(file+'.tmp',file);}
- function snapshot(){return {tasks:data.tasks,morningTime:data.morningTime,morningEnabled:data.morningEnabled,today:dateKey(clock()),notice,shortcut:shortcutRegistered?'Ctrl + Shift + T':'트레이 → 오늘 일정'};}
+ function snapshot(){return {tasks:data.tasks,morningTime:data.morningTime,morningEnabled:data.morningEnabled,today:dateKey(clock()),notice:Date.now()<noticeUntil?notice:'',noticeUntil,shortcut:shortcutRegistered?'Ctrl + Shift + T':'트레이 → 오늘 일정'};}
  function publish(){if(panel&&!panel.isDestroyed())panel.webContents.send('planner:changed',snapshot());}
  function position(){
   const pet=getPetWindow();const base=pet&&!pet.isDestroyed()?pet.getBounds():{...screen.getPrimaryDisplay().workArea,width:240,height:286};
@@ -77,7 +78,7 @@ function installPlanner({userData,getPetWindow,onNotice,getRegistrationSpeech,ge
     let speech='일정을 등록했어요.';
     try{speech=getRegistrationSpeech?.()||speech;}catch(error){console.warn('일정 등록 대사 조회 실패:',error.message);}
     const summary=task.date+(task.time?' '+task.time:'')+' · '+task.title;
-    notice=speech+'\n'+summary;
+    setNotice('일정을 등록했어요.');
     // Registration already succeeded even if the transient bubble cannot open.
     try{onNotice?.(summary,{kind:'added',speech});}catch(error){console.warn('일정 등록 반응 표시 실패:',error.message);}
    }
@@ -91,7 +92,7 @@ function installPlanner({userData,getPetWindow,onNotice,getRegistrationSpeech,ge
      let speech='일정을 완료했어요!';
      try{speech=getCompletionSpeech?.({remaining,overdue,allDone,task})||speech;}catch(error){console.warn('일정 완료 대사 조회 실패:',error.message);}
      const summary=task.title+' · 완료\n'+(remaining?'오늘 일정 '+remaining+'개 남았어요.':'오늘 남은 일정은 없어요.')+(overdue?'\n지난 미완료 일정 '+overdue+'개도 있어요.':'');
-     notice=speech+'\n'+summary;
+     setNotice('일정을 완료했어요. '+(remaining?'오늘 '+remaining+'개 남았어요.':'오늘 남은 일정은 없어요.'));
      try{onNotice?.(summary,{kind:'completed',speech,remaining,overdue,allDone});}catch(error){console.warn('일정 완료 반응 표시 실패:',error.message);}
     }
    }
@@ -101,7 +102,7 @@ function installPlanner({userData,getPetWindow,onNotice,getRegistrationSpeech,ge
  function notify(message){
   let speech='일정 확인할 시간이에요!';
   try{speech=getReminderSpeech?.()||speech;}catch(error){console.warn('일정 알림 대사 조회 실패:',error.message);}
-  notice=speech+'\n'+message;publish();
+  setNotice(message,10000);publish();
   try{onNotice?.(message,{kind:'reminder',speech});}catch(error){console.warn('일정 알림 말풍선 표시 실패:',error.message);}
  }
  function tick(){
