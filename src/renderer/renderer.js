@@ -4,7 +4,15 @@ const sprite = document.getElementById("sprite");
 const workingArtwork=document.getElementById('workingArtwork');
 const hangoverArtwork=document.getElementById('hangoverArtwork');
 function isHungover(){return fatigueActive&&currentPet?.id==='kurimanju';}
-function updateWorkingArtwork(){const show=currentPet?.id==='shisa'&&currentState==='running';const hungover=isHungover();workingArtwork.hidden=!show;hangoverArtwork.hidden=!hungover;pet.dataset.workingArtwork=String(show);sprite.style.visibility=show||hungover?'hidden':'';}
+function updateWorkingArtwork(){
+ const hungover=isHungover();
+ const show=currentState==='running'&&['shisa','kurimanju'].includes(currentPet?.id)&&!hungover;
+ const source=currentPet?.id==='kurimanju'?'../assets/reactions/kurimanju-work-fixed.webp':'../assets/reactions/shisa-working-fixed.webp';
+ if(workingArtwork.getAttribute('src')!==source)workingArtwork.src=source;
+ workingArtwork.alt=currentPet?.id==='kurimanju'?'가만히 앉아 손끝만 움직이는 쿠리만쥬':'필기하며 작업 중인 시사';
+ workingArtwork.hidden=!show;hangoverArtwork.hidden=!hungover;
+ pet.dataset.workingArtwork=String(show);sprite.style.visibility=show||hungover?'hidden':'';
+}
 const fallback = document.getElementById("fallback");
 const resizeHandle = document.getElementById("resizeHandle");
 
