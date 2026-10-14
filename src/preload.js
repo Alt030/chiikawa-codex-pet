@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopPet", {
+  togglePlanner: () => ipcRenderer.invoke('planner:toggle'),
   onFatigueChange: (callback) => {ipcRenderer.on("pet:set-fatigue", (_event,payload)=>callback(payload));},
   getInitialState: () => ipcRenderer.invoke("pet:get-initial-state"),
   listPets: () => ipcRenderer.invoke("pet:list-pets"),

@@ -205,17 +205,14 @@ function endDrag(event) {
   const movedY = Math.abs(event.screenY - dragStart.startScreenY);
   const elapsed = clickCandidate ? Date.now() - clickCandidate.startedAt : Infinity;
   const isClick = movedX <= 4 && movedY <= 4 && elapsed <= 500;
+  const changedDragState = lastDragDirection !== null;
   dragStart = null;
   lastDragDirection = null;
   clickCandidate = null;
 
   if (isClick) {
-    window.desktopPet.setState({
-      state: "jumping",
-      message: "",
-      durationMs: 900,
-      returnState: currentState
-    });
+    if (changedDragState) window.desktopPet.finishDrag();
+    window.desktopPet.togglePlanner();
     return;
   }
 

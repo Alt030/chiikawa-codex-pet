@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'"><title>오늘 일정</title><link rel="stylesheet" href="planner.css"></head>
+<body>
+ <header><div class="heading"><span class="eyebrow">MY DAY</span><h1>오늘 일정</h1><p id="dateLabel"></p></div><button id="close" class="icon" aria-label="닫기">×</button></header>
+ <div id="notice" class="notice" hidden></div>
+ <section class="capture">
+  <form id="taskForm"><label class="sr-only" for="title">일정 제목</label><div class="input-row"><input id="title" maxlength="240" placeholder="할 일을 적고 Enter" autocomplete="off" required><button id="submit" type="submit" aria-label="일정 추가">+</button></div>
+   <div class="options"><button type="button" id="today">오늘</button><button type="button" id="tomorrow">내일</button><label class="sr-only" for="date">날짜</label><input type="date" id="date" required><label class="sr-only" for="time">시간 (선택)</label><input type="time" id="time" title="시간 (선택)"><button type="button" id="clearTime" title="시간 지우기">×</button></div>
+   <div id="editing" hidden>일정 수정 중 <button type="button" id="cancelEdit">취소</button></div>
+  </form>
+ </section>
+ <nav aria-label="일정 보기"><button data-tab="today" class="selected">오늘 <span id="todayCount">0</span></button><button data-tab="upcoming">예정</button><button data-tab="done">완료</button></nav>
+ <main id="list" aria-live="polite"></main>
+ <div id="undo" class="undo" hidden><span>일정을 삭제했어요</span><button id="undoDelete">되돌리기</button></div>
+ <p id="error" role="alert" hidden></p>
+ <footer><span id="progress">오늘의 할 일을 추가해보세요</span><button id="settingsToggle" aria-expanded="false">알림 설정</button></footer>
+ <section id="settings" hidden><label><input type="checkbox" id="morningEnabled"> 아침에 오늘 일정 알려주기</label><label>알림 시간 <input type="time" id="morningTime" value="09:00"></label><p id="shortcut"></p><button id="saveSettings">저장</button></section>
+ <script src="planner-ui.js"></script>
+</body></html>

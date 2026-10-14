@@ -7,6 +7,12 @@ function measure(){const r=bubble.getBoundingClientRect();window.desktopPet.meas
 window.desktopPet.onBubbleMessage(p=>{
  bubble.replaceChildren();document.documentElement.style.setProperty('--bubble-scale',String(p.bubbleScale||1));
  elapsedElement=null;workStartedAt=null;activeSessionCount=Number(p.activeSessionCount)||0;
+ if(p.event==='planner_notice'){
+  const heading=document.createElement('div');heading.textContent=p.speech||'오늘 일정';
+  const detail=document.createElement('div');detail.className='detail';detail.textContent=p.message;
+  const hint=document.createElement('div');hint.className='detail';hint.textContent='펫을 눌러 확인하세요';
+  bubble.append(heading,detail,hint);requestAnimationFrame(measure);return;
+ }
  const id=p.pet?.id==='kurimanju'?'kurimanju':'shisa';const state=PetReactionPolicy.phraseState(p.event,p.state);
  const key=[id,state,p.event,p.message].join('|');if(key!==lastKey){lastPhrase=PetReactionPolicy.pickPhrase(id,state,Math.random,p.message);lastAsset=PetReactionPolicy.reactionAsset(id,p.event,Math.random,p.message);lastKey=key;}
  const idleChatter=String(p.event||'').startsWith('idle_chatter_');if(idleChatter)lastPhrase=p.message||'';

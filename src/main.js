@@ -9,6 +9,10 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const {constrainBounds}=require('./screen-bounds');
+const {installPlanner}=require('./planner');
+const plannerSpeech=require('./planner-speech');
+let planner=null;
+let plannerSpeechUntil=0;
 let constrainingWindow=false;
 function keepPetOnScreen(persist=false){
  if(!win||win.isDestroyed()||constrainingWindow)return;
@@ -544,6 +548,7 @@ function buildBubbleItems(state = currentState) {
 
 function showBubble(input) {
   if (!bubbleWin || bubbleWin.isDestroyed() || !win?.isVisible()) return;
+  if(Date.now()<plannerSpeechUntil)return;
   clearTimeout(bubbleTimer);
   bubbleTimer = null;
 
@@ -1023,6 +1028,15 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  if(url.pathname==='/planner/open'&&req.method==='POST'){
+    if(!planner){sendJson(res,503,{ok:false,error:'일정 관리가 준비되지 않았어요.'});return;}
+    planner.open();sendJson(res,200,{ok:true});return;
+  }
+  if(url.pathname==='/planner/preview'&&req.method==='GET'){
+    try{const target=path.join(__dirname,'..','planner-preview.png');fs.writeFileSync(target,await planner.capture());sendJson(res,200,{ok:true,screenshot:target});}
+    catch(error){sendJson(res,503,{ok:false,error:error.message});}return;
+  }
+
   if (url.pathname === "/health") {
     const storage = getPetStorageInfo();
     sendJson(res, 200, {
@@ -1351,6 +1365,7 @@ function createApiServer() {
 
 function buildTrayMenu() {
  return Menu.buildFromTemplate([
+ {label:'오늘 일정',click:()=>planner?.open()},
  {label:"보이기 / 숨기기",click:()=>{if(!win)return;if(win.isVisible()){win.hide();bubbleWin?.hide();}else win.show();}},
  {label:"캐릭터 선택",submenu:["shisa","kurimanju"].map(id=>({label:id==="shisa"?"시사":"쿠리만쥬",type:"radio",checked:activePet?.id===id,click:()=>{selectPet(id);rebuildTrayMenu();}}))},
  {label:'캐릭터 위치 초기화',click:resetPetPosition},
@@ -1398,6 +1413,23 @@ app.whenReady().then(() => {
   createBubbleWindow();
   createTray();
   createApiServer();
+  try{
+    planner=installPlanner({userData:app.getPath('userData'),getPetWindow:()=>win,
+    getRegistrationSpeech:()=>plannerSpeech.registrationSpeech(activePet?.id),
+    getCompletionSpeech:context=>plannerSpeech.completionSpeech(activePet?.id,context),
+    getReminderSpeech:()=>plannerSpeech.reminderSpeech(activePet?.id),
+    onNotice:(message,options={})=>{
+      // Schedule notices do not change the Codex session state or completion status.
+      if(!bubbleWin||bubbleWin.isDestroyed()||!win?.isVisible())return;
+      clearTimeout(bubbleTimer);
+      plannerSpeechUntil=Date.now()+(options.kind==='added'?7000:15000);
+      const payload={event:'planner_notice',message,speech:options.speech||'',pet:toPetPayload(activePet),bubbleScale:clampBubbleScale(settings.bubbleScale||1)};
+      positionBubble();bubbleWin.showInactive();
+      if(bubbleReady)bubbleWin.webContents.send('bubble:set-message',payload);else pendingBubblePayload=payload;
+      bubbleTimer=setTimeout(()=>{plannerSpeechUntil=0;if(currentState.message)showBubble(buildBubbleItems(currentState));else bubbleWin?.hide();},options.kind==='added'?7000:15000);
+    }});
+    planner.start();
+  }catch(error){console.warn('일정 관리 시작 실패:',error.message);}
   for(const event of ['display-added','display-removed','display-metrics-changed'])screen.on(event,()=>{resizePetWindow(settings.zoom||1);keepPetOnScreen(true);});
   codexObserver.start();
   quota.refresh();
@@ -1601,6 +1633,7 @@ app.on("window-all-closed", (event) => {
 });
 
 app.on("before-quit", () => {
+  planner?.stop();
   clearInterval(idleCompanionTimer);
   clearTimeout(idleBubbleReturnTimer);
   codexObserver.stop();
