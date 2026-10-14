@@ -14,8 +14,9 @@ window.desktopPet.onBubbleMessage(p=>{
   bubble.append(heading,detail,hint);requestAnimationFrame(measure);return;
  }
  const id=p.pet?.id==='kurimanju'?'kurimanju':'shisa';const state=PetReactionPolicy.phraseState(p.event,p.state);
- const key=[id,state,p.event,p.message].join('|');if(key!==lastKey){lastPhrase=PetReactionPolicy.pickPhrase(id,state,Math.random,p.message);lastAsset=PetReactionPolicy.reactionAsset(id,p.event,Math.random,p.message);lastKey=key;}
+ const key=[id,state,p.event,p.message,Boolean(p.tired)].join('|');if(key!==lastKey){lastPhrase=PetReactionPolicy.pickPhrase(id,state,Math.random,p.message);lastAsset=PetReactionPolicy.reactionAsset(id,p.event,Math.random,p.message);lastKey=key;}
  const idleChatter=String(p.event||'').startsWith('idle_chatter_');if(idleChatter)lastPhrase=p.message||'';
+ if(id==='kurimanju'&&p.tired&&['running','review'].includes(state))lastPhrase='너무 열심히 일했나보다....';
  const asset=lastAsset;
  if(asset){const image=document.createElement('img');image.className='reaction-card';image.alt=(id==='shisa'?'시사':'쿠리만쥬')+' 상황 반응';image.onload=measure;image.onerror=()=>{image.remove();measure();};image.src='../assets/reactions/'+asset;bubble.append(image);}
 

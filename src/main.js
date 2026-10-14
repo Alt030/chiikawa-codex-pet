@@ -26,6 +26,7 @@ function keepPetOnScreen(persist=false){
 }
 const { FatigueManager } = require("./fatigue-manager");
 const fatigue = new FatigueManager();
+let lastFatigueTired=false;
 const { IdleCompanion } = require('./idle-companion');
 const idleCompanion=new IdleCompanion();
 let idleCompanionTimer=null;
@@ -564,6 +565,7 @@ function showBubble(input) {
   const payload = {
     message: items[0]?.message || "",
     pet: toPetPayload(activePet),
+    tired: fatigue.status().tired,
     state: items[0]?.state || "idle",
     event: currentState.agentEvent || "",
     quotaText: currentState.agentEvent === 'done' ? quota.text() : '',
@@ -1447,7 +1449,10 @@ app.whenReady().then(() => {
       if(currentState.agentEvent?.startsWith('idle_chatter_'))broadcastState({state:'idle',message:'',source:null,sessionId:null,agentEvent:'idle_rest'});
     },12000);
   },5000);
-  setInterval(()=>sendToWindows("pet:set-fatigue",fatigue.status()),5000);
+  setInterval(()=>{
+    const status=fatigue.status();sendToWindows("pet:set-fatigue",status);
+    if(status.tired!==lastFatigueTired){lastFatigueTired=status.tired;if(currentState.message)showBubble(buildBubbleItems(currentState));}
+  },5000);
 
   reminderManager = new ReminderManager({
     reminders: settings.reminders,
